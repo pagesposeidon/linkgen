@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Email Link Generator</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    .container {
+      width: min(900px, calc(100% - 32px));
+      margin: 50px auto;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      color: #6b7280;
+      line-height: 1.5;
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 230px;
+      resize: vertical;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: #2563eb;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 12px 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      background: #f3f4f6;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-size: 14px;
+    }
+
+    #status {
+      min-height: 24px;
+      margin: 12px 0;
+      font-weight: bold;
+    }
+
+    .output-section {
+      display: none;
+      margin-top: 25px;
+    }
+
+    .output-section.show {
+      display: block;
+    }
+
+    .small {
+      color: #6b7280;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px auto;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="card">
+
+    <h1>Email Link Generator</h1>
+
+    <p class="description">
+      Paste your email addresses below. You can separate them
+      using new lines, commas, semicolons, or spaces.
+    </p>
+
+    <label for="emails">
+      Email List
+    </label>
+
+    <textarea
+      id="emails"
+      placeholder="avotv2020@gmail.com
+john@yahoo.com
+mary@outlook.com
+hello@proton.me"></textarea>
+
+    <div class="buttons">
+
+      <button
+        class="primary"
+        id="generateButton"
+        type="button">
+        Generate Links
+      </button>
+
+      <button
+        class="secondary"
+        id="clearButton"
+        type="button">
+        Clear
+      </button>
+
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        Valid:
+        <strong id="validCount">0</strong>
+      </div>
+
+      <div class="stat">
+        Invalid:
+        <strong id="invalidCount">0</strong>
+      </div>
+
+      <div class="stat">
+        Duplicates removed:
+        <strong id="duplicateCount">0</strong>
+      </div>
+
+    </div>
+
+    <div id="status"></div>
+
+
+    <div
+      id="outputSection"
+      class="output-section">
+
+      <label for="output">
+        Generated Links
+      </label>
+
+      <textarea
+        id="output"
+        readonly></textarea>
+
+      <div class="buttons">
+
+        <button
+          class="primary"
+          id="copyButton"
+          type="button">
+          Copy All
+        </button>
+
+        <button
+          class="secondary"
+          id="txtButton"
+          type="button">
+          Download TXT
+        </button>
+
+        <button
+          class="secondary"
+          id="csvButton"
+          type="button">
+          Download CSV
+        </button>
+
+      </div>
+
+      <p class="small">
+        Emails are converted locally in your browser.
+      </p>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+  // =============================================
+  // YOUR DESTINATION WEBSITE
+  // =============================================
+
+  const BASE_URL =
+    "https://link-mailers.up.railway.app/";
+
+
+  // =============================================
+  // ELEMENTS
+  // =============================================
+
+  const emailsInput =
+    document.getElementById("emails");
+
+  const output =
+    document.getElementById("output");
+
+  const outputSection =
+    document.getElementById("outputSection");
+
+  const status =
+    document.getElementById("status");
+
+  const validCount =
+    document.getElementById("validCount");
+
+  const invalidCount =
+    document.getElementById("invalidCount");
+
+  const duplicateCount =
+    document.getElementById("duplicateCount");
+
+
+  let generatedData = [];
+
+
+  // =============================================
+  // EMAIL VALIDATION
+  // =============================================
+
+  function isValidEmail(email) {
+
+    const pattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return pattern.test(email);
+
+  }
+
+
+  // =============================================
+  // PARSE EMAIL LIST
+  // =============================================
+
+  function parseEmails(text) {
+
+    return text
+      .split(/[\s,;]+/)
+      .map(email => email.trim())
+      .filter(Boolean);
+
+  }
+
+
+  // =============================================
+  // GENERATE LINKS
+  // =============================================
+
+  function generateLinks() {
+
+    const rawEmails =
+      parseEmails(emailsInput.value);
+
+    if (rawEmails.length === 0) {
+
+      status.textContent =
+        "Paste at least one email address.";
+
+      outputSection.classList.remove("show");
+
+      return;
+    }
+
+
+    const seen =
+      new Set();
+
+    const valid =
+      [];
+
+    const invalid =
+      [];
+
+    let duplicates = 0;
+
+
+    rawEmails.forEach(function(email) {
+
+      const normalized =
+        email.toLowerCase();
+
+
+      if (seen.has(normalized)) {
+
+        duplicates++;
+
+        return;
+
+      }
+
+
+      seen.add(normalized);
+
+
+      if (isValidEmail(email)) {
+
+        valid.push(email);
+
+      } else {
+
+        invalid.push(email);
+
+      }
+
+    });
+
+
+    generatedData =
+      valid.map(function(email) {
+
+        return {
+
+          email: email,
+
+          link:
+            BASE_URL +
+            "?e=" +
+            encodeURIComponent(email)
+
+        };
+
+      });
+
+
+    output.value =
+      generatedData
+        .map(item => item.link)
+        .join("\n");
+
+
+    validCount.textContent =
+      valid.length;
+
+    invalidCount.textContent =
+      invalid.length;
+
+    duplicateCount.textContent =
+      duplicates;
+
+
+    if (valid.length > 0) {
+
+      status.textContent =
+        valid.length +
+        " link" +
+        (valid.length === 1 ? "" : "s") +
+        " generated successfully.";
+
+      outputSection.classList.add("show");
+
+    } else {
+
+      status.textContent =
+        "No valid email addresses were found.";
+
+      outputSection.classList.remove("show");
+
+    }
+
+  }
+
+
+  // =============================================
+  // COPY ALL
+  // =============================================
+
+  async function copyLinks() {
+
+    if (!output.value) {
+      return;
+    }
+
+    try {
+
+      await navigator.clipboard.writeText(
+        output.value
+      );
+
+      status.textContent =
+        "All generated links copied.";
+
+    } catch (error) {
+
+      output.select();
+
+      document.execCommand("copy");
+
+      status.textContent =
+        "All generated links copied.";
+
+    }
+
+  }
+
+
+  // =============================================
+  // DOWNLOAD FILE
+  // =============================================
+
+  function downloadFile(
+    content,
+    filename,
+    type
+  ) {
+
+    const blob =
+      new Blob(
+        [content],
+        { type: type }
+      );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href =
+      url;
+
+    link.download =
+      filename;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(url);
+
+  }
+
+
+  // =============================================
+  // DOWNLOAD TXT
+  // =============================================
+
+  function downloadTXT() {
+
+    if (!generatedData.length) {
+      return;
+    }
+
+    const content =
+      generatedData
+        .map(item => item.link)
+        .join("\n");
+
+    downloadFile(
+      content,
+      "generated-links.txt",
+      "text/plain;charset=utf-8"
+    );
+
+  }
+
+
+  // =============================================
+  // DOWNLOAD CSV
+  // =============================================
+
+  function downloadCSV() {
+
+    if (!generatedData.length) {
+      return;
+    }
+
+
+    function csvEscape(value) {
+
+      return (
+        '"' +
+        String(value)
+          .replace(/"/g, '""') +
+        '"'
+      );
+
+    }
+
+
+    const rows = [
+      ["Email", "Generated Link"],
+
+      ...generatedData.map(item => [
+        item.email,
+        item.link
+      ])
+    ];
+
+
+    const csv =
+      rows
+        .map(row =>
+          row
+            .map(csvEscape)
+            .join(",")
+        )
+        .join("\n");
+
+
+    downloadFile(
+      csv,
+      "generated-links.csv",
+      "text/csv;charset=utf-8"
+    );
+
+  }
+
+
+  // =============================================
+  // CLEAR
+  // =============================================
+
+  function clearEverything() {
+
+    emailsInput.value =
+      "";
+
+    output.value =
+      "";
+
+    generatedData =
+      [];
+
+    validCount.textContent =
+      "0";
+
+    invalidCount.textContent =
+      "0";
+
+    duplicateCount.textContent =
+      "0";
+
+    status.textContent =
+      "";
+
+    outputSection.classList.remove("show");
+
+    emailsInput.focus();
+
+  }
+
+
+  // =============================================
+  // BUTTON EVENTS
+  // =============================================
+
+  document
+    .getElementById("generateButton")
+    .addEventListener(
+      "click",
+      generateLinks
+    );
+
+
+  document
+    .getElementById("copyButton")
+    .addEventListener(
+      "click",
+      copyLinks
+    );
+
+
+  document
+    .getElementById("txtButton")
+    .addEventListener(
+      "click",
+      downloadTXT
+    );
+
+
+  document
+    .getElementById("csvButton")
+    .addEventListener(
+      "click",
+      downloadCSV
+    );
+
+
+  document
+    .getElementById("clearButton")
+    .addEventListener(
+      "click",
+      clearEverything
+    );
+
+</script>
+
+</body>
+</html>
